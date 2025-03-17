@@ -8,8 +8,25 @@
 </head>
 <body>
     <h2>Session Replay Detector</h2>
-    <button id="scan">Scan Website</button>
-    <ul id="results"></ul>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+        <button class="tab-button active" id="detectedTab">Detected Tools</button>
+        <button class="tab-button" id="potentialTab">Potential Providers</button>
+    </div>
+
+    <!-- Detected Session Replay Tools -->
+    <div class="tab-content" id="detectedContent">
+        <button id="scan">Scan Website</button>
+        <ul id="results">Click "Scan Website" to detect session replay tools.</ul>
+    </div>
+
+    <!-- Potential Session Replay Providers -->
+    <div class="tab-content hidden" id="potentialContent">
+        <h3>Potential Tracking Scripts</h3>
+        <ul id="potentialResults">Click "Scan Website" to find possible trackers.</ul>
+    </div>
+
     <script src="popup.js"></script>
 </body>
 </html>
