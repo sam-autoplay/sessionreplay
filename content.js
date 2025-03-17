@@ -15,8 +15,8 @@ const sessionReplayTools = [
     { name: "Pendo", check: () => !!window.pendo, script: "pendo.io" },
     { name: "Datadog RUM", check: () => !!window.DD_RUM, script: "datadoghq.com" },
     { name: "SessionCam", check: () => !!window.sessionCamRecorder, script: "sessioncam.com" },
-    { name: "Quantum Metric", check: () => !!window.QuantumMetricAPI, script: "quantummetric.com" }
-    { name: "Heap Analytics", check: () => !!window.heap, script: "cdn.heapanalytics.com" }
+    { name: "Quantum Metric", check: () => !!window.QuantumMetricAPI, script: "quantummetric.com" },  // ← **Comma added**
+    { name: "Heap Analytics", check: () => !!window.heap, script: "cdn.heapanalytics.com" }  // ← **Now valid**
 ];
 
 // Function to detect session replay tools
