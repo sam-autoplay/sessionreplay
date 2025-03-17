@@ -4,10 +4,10 @@ document.getElementById("scan").addEventListener("click", () => {
             const resultsList = document.getElementById("results");
             resultsList.innerHTML = ""; // Clear previous results
 
-            if (response && response.detected.length > 0) {
+            if (response && response.detected && response.detected.length > 0) {
                 response.detected.forEach(tool => {
                     const li = document.createElement("li");
-                    li.textContent = typeof tool === "string" ? tool : tool.name; // Ensure only the name is shown
+                    li.textContent = tool;
                     resultsList.appendChild(li);
                 });
             } else {
