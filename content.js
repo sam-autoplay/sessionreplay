@@ -16,18 +16,19 @@ const sessionReplayTools = [
     { name: "Datadog RUM", check: () => !!window.DD_RUM, script: "datadoghq.com" },
     { name: "SessionCam", check: () => !!window.sessionCamRecorder, script: "sessioncam.com" },
     { name: "Quantum Metric", check: () => !!window.QuantumMetricAPI, script: "quantummetric.com" },
-    { name: "Heap Analytics", check: () => !!window.heap, script: "cdn.heapanalytics.com" }
+    { name: "Heap Analytics", check: () => !!window.heap, script: "heapanalytics.com" }
 ];
 
-// Function to detect known session replay tools
+let detectedTools = new Set();
+
+// Function to detect session replay tools
 function detectSessionReplayTools() {
     console.log("Checking for session replay tools...");
-    let detected = [];
-
+    
     sessionReplayTools.forEach(tool => {
         try {
             if (tool.check()) {
-                detected.push(tool.name);
+                detectedTools.add(tool.name);
                 console.log(`Detected ${tool.name} via global variable.`);
             }
         } catch (error) {
@@ -38,41 +39,37 @@ function detectSessionReplayTools() {
     // Check for script tags in the HTML
     document.querySelectorAll("script").forEach(script => {
         sessionReplayTools.forEach(tool => {
-            if (script.src.includes(tool.script) && !detected.includes(tool.name)) {
-                detected.push(tool.name);
+            if (script.src.includes(tool.script)) {
+                detectedTools.add(tool.name);
                 console.log(`Detected ${tool.name} via script tag: ${script.src}`);
             }
         });
     });
 
-    return detected;
+    return Array.from(detectedTools);
 }
 
 // Monitor network requests dynamically
-const detectedRequests = new Set();
 const observer = new PerformanceObserver((list) => {
     list.getEntries().forEach((entry) => {
-        if (!detectedRequests.has(entry.name)) {
-            detectedRequests.add(entry.name);
-            if (/analytics|tracking|session|replay|rum|heatmap|behavior/i.test(entry.name)) {
-                console.log(`Possible session replay provider detected via network request: ${entry.name}`);
+        sessionReplayTools.forEach(tool => {
+            if (entry.name.includes(tool.script)) {
+                detectedTools.add(tool.name);
+                console.log(`Detected ${tool.name} via network request: ${entry.name}`);
             }
-        }
+        });
     });
 });
 
 observer.observe({ entryTypes: ["resource"] });
 
-// Delay rechecking to catch late-loaded scripts
+// **Recheck FullStory & Heap after 5 seconds (for late loading scripts)**
 setTimeout(() => {
-    console.log("Running delayed detection...");
-    let results = detectSessionReplayTools();
+    console.log("Running delayed detection for FullStory & Heap...");
+    if (!!window.FS) detectedTools.add("FullStory");
+    if (!!window.heap) detectedTools.add("Heap Analytics");
 
-    if (results.length > 0) {
-        console.log("Detected session replay tools:", results);
-    } else {
-        console.log("No session replay tools detected.");
-    }
+    console.log("Final detected session replay tools:", Array.from(detectedTools));
 }, 5000);
 
 // Listen for popup.js requests
