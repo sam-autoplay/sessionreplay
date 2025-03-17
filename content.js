@@ -1,19 +1,37 @@
 console.log("Session Replay Detector script injected!");
 
-// Known session replay providers
+// Expanded list of known session replay and digital experience analytics providers
 const sessionReplayTools = [
     { name: "Hotjar", check: () => !!window.hj, script: "hotjar.com" },
     { name: "FullStory", check: () => !!window.FS, script: "fullstory.com" },
     { name: "Microsoft Clarity", check: () => !!window.clarity, script: "clarity.ms" },
     { name: "LogRocket", check: () => !!window.LogRocket, script: "logrocket.com" },
+    { name: "Lucky Orange", check: () => !!window.__lo_site_id, script: "luckyorange.com" },
+    { name: "Mouseflow", check: () => !!window._mfq, script: "mouseflow.com" },
+    { name: "Inspectlet", check: () => !!window.__insp, script: "inspectlet.com" },
+    { name: "Smartlook", check: () => !!window.smartlook, script: "smartlook.com" },
+    { name: "Crazy Egg", check: () => !!window.CE2, script: "crazyegg.com" },
+    { name: "PostHog", check: () => !!window.posthog, script: "posthog.com" },
+    { name: "Pendo", check: () => !!window.pendo, script: "pendo.io" },
+    { name: "Datadog RUM", check: () => !!window.DD_RUM, script: "datadoghq.com" },
+    { name: "SessionCam", check: () => !!window.sessionCamRecorder, script: "sessioncam.com" },
+    { name: "Quantum Metric", check: () => !!window.QuantumMetricAPI, script: "quantummetric.com" },
     { name: "Heap Analytics", check: () => !!window.heap, script: "heapanalytics.com" },
-    { name: "Google Tag Manager", check: () => !!window.dataLayer, script: "googletagmanager.com" }
+    { name: "Amplitude", check: () => !!window.amplitude, script: "amplitude.com" },
+    { name: "Glassbox", check: () => !!window.glassbox, script: "glassboxdigital.com" },
+    { name: "UXCam", check: () => !!window.UXCAM, script: "uxcam.com" },
+    { name: "OpenReplay", check: () => !!window.openReplay, script: "openreplay.com" },
+    { name: "Rookout", check: () => !!window.Rookout, script: "rookout.com" },
+    { name: "ContentSquare", check: () => !!window.CS_CONF, script: "contentsquare.net" },
+    { name: "SessionStack", check: () => !!window.SessionStack, script: "sessionstack.com" },
+    { name: "VWO Insights", check: () => !!window._vwo, script: "visualwebsiteoptimizer.com" },
+    { name: "Crazy Egg", check: () => !!window.CE2, script: "crazyegg.com" }
 ];
 
 let detectedTools = new Set();
 let potentialTools = new Set();
 
-// Function to detect known session replay tools
+// Function to detect session replay tools
 function detectSessionReplayTools() {
     sessionReplayTools.forEach(tool => {
         try {
@@ -34,7 +52,7 @@ function detectSessionReplayTools() {
         });
 
         // Capture unknown tracking scripts
-        if (!detectedTools.has(script.src) && /analytics|tracking|session|replay|rum/i.test(script.src)) {
+        if (/analytics|tracking|session|replay|rum|fullstory/i.test(script.src)) {
             potentialTools.add(script.src);
         }
     });
@@ -55,13 +73,36 @@ const observer = new PerformanceObserver((list) => {
         });
 
         // Capture potential session replay-related network requests
-        if (/analytics|tracking|session|replay|rum/i.test(entry.name)) {
+        if (/analytics|tracking|session|replay|rum|fullstory/i.test(entry.name)) {
             potentialTools.add(entry.name);
         }
     });
 });
 
 observer.observe({ entryTypes: ["resource"] });
+
+// **Monitor dynamically loaded scripts**
+const scriptObserver = new MutationObserver((mutationsList) => {
+    mutationsList.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+            if (node.tagName === "SCRIPT" && node.src) {
+                sessionReplayTools.forEach(tool => {
+                    if (node.src.includes(tool.script)) {
+                        detectedTools.add(tool.name);
+                    }
+                });
+
+                // Capture additional unknown session tracking scripts
+                if (/analytics|tracking|session|replay|rum|fullstory/i.test(node.src)) {
+                    potentialTools.add(node.src);
+                }
+            }
+        });
+    });
+});
+
+// Observe script elements being added
+scriptObserver.observe(document.documentElement, { childList: true, subtree: true });
 
 // Listen for messages from popup.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
