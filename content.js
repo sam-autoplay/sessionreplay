@@ -1,4 +1,5 @@
-// List of known session replay tools and their global variables or script URLs
+console.log("Session Replay Detector script injected!");
+
 const sessionReplayTools = [
     { name: "Hotjar", check: () => !!window.hj, script: "hotjar.com" },
     { name: "FullStory", check: () => !!window.FS, script: "fullstory.com" },
@@ -16,14 +17,27 @@ const sessionReplayTools = [
     { name: "Quantum Metric", check: () => !!window.QuantumMetricAPI, script: "quantummetric.com" }
 ];
 
-// Function to detect tools
 function detectSessionReplayTools() {
-    return sessionReplayTools.filter(tool => tool.check()).map(tool => tool.name);
+    console.log("Checking for session replay tools...");
+    const detected = sessionReplayTools.filter(tool => {
+        try {
+            console.log(`Checking: ${tool.name}`);
+            return tool.check();
+        } catch (error) {
+            console.error(`Error checking ${tool.name}:`, error);
+            return false;
+        }
+    }).map(tool => tool.name);
+
+    console.log("Detected tools:", detected);
+    return detected;
 }
 
-// Send results to the popup
+// Listen for messages from popup.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "detect") {
-        sendResponse({ detected: detectSessionReplayTools() });
+        console.log("Received detect request.");
+        const results = detectSessionReplayTools();
+        sendResponse({ detected: results });
     }
 });
