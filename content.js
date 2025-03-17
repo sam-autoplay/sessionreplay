@@ -19,61 +19,79 @@ const sessionReplayTools = [
     { name: "Heap Analytics", check: () => !!window.heap, script: "cdn.heapanalytics.com" }  // ← **Now valid**
 ];
 
-// Function to detect session replay tools
+// **Step 1: Detect known tools via global variables**
 function detectSessionReplayTools() {
     console.log("Checking for session replay tools...");
-    const detected = [];
+    let detected = [];
 
-    // Check for global variables
     sessionReplayTools.forEach(tool => {
         try {
             if (tool.check()) {
-                detected.push(tool.name);
+                detected.push({ name: tool.name, method: "window object" });
+                console.log(`Detected ${tool.name} via global variable.`);
             }
         } catch (error) {
             console.error(`Error checking ${tool.name}:`, error);
         }
     });
 
-    // Check for script tags in the HTML
-    document.querySelectorAll("script").forEach(script => {
-        sessionReplayTools.forEach(tool => {
-            if (script.src.includes(tool.script) && !detected.includes(tool.name)) {
-                detected.push(tool.name);
-                console.log(`Detected ${tool.name} via script tag: ${script.src}`);
-            }
-        });
-    });
-
-    // Observe network requests for session replay scripts
-    const observer = new PerformanceObserver((list) => {
-        list.getEntries().forEach((entry) => {
-            sessionReplayTools.forEach(tool => {
-                if (entry.name.includes(tool.script) && !detected.includes(tool.name)) {
-                    detected.push(tool.name);
-                    console.log(`Detected ${tool.name} via network request: ${entry.name}`);
-                }
-            });
-        });
-    });
-
-    observer.observe({ entryTypes: ["resource"] });
-
-    console.log("Detected tools:", detected);
     return detected;
 }
 
-// Wait for Hotjar or other tools to load dynamically (delayed check)
-setTimeout(() => {
-    console.log("Running delayed check for session replay tools...");
-    detectSessionReplayTools();
-}, 5000); // Waits 5 seconds before re-checking
+// **Step 2: Detect script tags dynamically**
+function detectUnknownReplayTools() {
+    let unknownTools = [];
+    document.querySelectorAll("script").forEach(script => {
+        if (
+            script.src &&
+            !sessionReplayTools.some(tool => script.src.includes(tool.script)) && // Ignore known tools
+            /analytics|tracking|session|replay|rum|heatmap|behavior/i.test(script.src) // Heuristic check
+        ) {
+            unknownTools.push({ name: "Unknown Tool", script: script.src });
+            console.log(`Possible unknown session replay script found: ${script.src}`);
+        }
+    });
 
-// Listen for messages from popup.js
+    return unknownTools;
+}
+
+// **Step 3: Monitor network requests dynamically**
+const detectedRequests = new Set();
+const observer = new PerformanceObserver((list) => {
+    list.getEntries().forEach((entry) => {
+        if (!detectedRequests.has(entry.name)) {
+            detectedRequests.add(entry.name);
+            if (/analytics|tracking|session|replay|rum|heatmap|behavior/i.test(entry.name)) {
+                console.log(`Possible session replay provider detected via network request: ${entry.name}`);
+            }
+        }
+    });
+});
+
+observer.observe({ entryTypes: ["resource"] });
+
+// **Step 4: Run detection with a delay**
+setTimeout(() => {
+    console.log("Running delayed detection...");
+    let knownTools = detectSessionReplayTools();
+    let unknownTools = detectUnknownReplayTools();
+    
+    let allDetected = [...knownTools, ...unknownTools];
+
+    if (allDetected.length > 0) {
+        console.log("Detected session replay tools:", allDetected);
+    } else {
+        console.log("No session replay tools detected.");
+    }
+}, 5000);
+
+// **Step 5: Listen for popup.js requests**
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "detect") {
         console.log("Received detect request.");
-        const results = detectSessionReplayTools();
-        sendResponse({ detected: results });
+        let knownTools = detectSessionReplayTools();
+        let unknownTools = detectUnknownReplayTools();
+        
+        sendResponse({ detected: [...knownTools, ...unknownTools] });
     }
 });
