@@ -1,5 +1,6 @@
 console.log("Session Replay Detector script injected!");
 
+// List of known session replay tool script patterns
 const sessionReplayTools = [
     { name: "Hotjar", check: () => !!window.hj, script: "hotjar.com" },
     { name: "FullStory", check: () => !!window.FS, script: "fullstory.com" },
@@ -17,17 +18,36 @@ const sessionReplayTools = [
     { name: "Quantum Metric", check: () => !!window.QuantumMetricAPI, script: "quantummetric.com" }
 ];
 
+// Function to detect session replay tools
 function detectSessionReplayTools() {
     console.log("Checking for session replay tools...");
-    const detected = sessionReplayTools.filter(tool => {
+    const detected = [];
+
+    // Check global variables (window-based detection)
+    sessionReplayTools.forEach(tool => {
         try {
             console.log(`Checking: ${tool.name}`);
-            return tool.check();
+            if (tool.check()) {
+                detected.push(tool.name);
+            }
         } catch (error) {
             console.error(`Error checking ${tool.name}:`, error);
-            return false;
         }
-    }).map(tool => tool.name);
+    });
+
+    // Also check network requests for tracking scripts
+    const observer = new PerformanceObserver((list) => {
+        list.getEntries().forEach((entry) => {
+            sessionReplayTools.forEach(tool => {
+                if (entry.name.includes(tool.script) && !detected.includes(tool.name)) {
+                    detected.push(tool.name);
+                    console.log(`Detected ${tool.name} via network request: ${entry.name}`);
+                }
+            });
+        });
+    });
+
+    observer.observe({ entryTypes: ["resource"] });
 
     console.log("Detected tools:", detected);
     return detected;
