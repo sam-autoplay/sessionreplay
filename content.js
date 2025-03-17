@@ -39,20 +39,33 @@ function detectSessionReplayTools() {
 }
 
 // **Step 2: Detect script tags dynamically**
-function detectUnknownReplayTools() {
-    let unknownTools = [];
-    document.querySelectorAll("script").forEach(script => {
-        if (
-            script.src &&
-            !sessionReplayTools.some(tool => script.src.includes(tool.script)) && // Ignore known tools
-            /analytics|tracking|session|replay|rum|heatmap|behavior/i.test(script.src) // Heuristic check
-        ) {
-            unknownTools.push({ name: "Unknown Tool", script: script.src });
-            console.log(`Possible unknown session replay script found: ${script.src}`);
+function detectSessionReplayTools() {
+    console.log("Checking for session replay tools...");
+    const detected = [];
+
+    // Check for global variables (window-based detection)
+    sessionReplayTools.forEach(tool => {
+        try {
+            if (tool.check()) {
+                detected.push(tool.name);
+                console.log(`Detected ${tool.name} via global variable.`);
+            }
+        } catch (error) {
+            console.error(`Error checking ${tool.name}:`, error);
         }
     });
 
-    return unknownTools;
+    // Check for script tags in the HTML
+    document.querySelectorAll("script").forEach(script => {
+        sessionReplayTools.forEach(tool => {
+            if (script.src.includes(tool.script) && !detected.includes(tool.name)) {
+                detected.push(tool.name);
+                console.log(`Detected ${tool.name} via script tag: ${script.src}`);
+            }
+        });
+    });
+
+    return detected; // Ensure it returns an array of names only
 }
 
 // **Step 3: Monitor network requests dynamically**
