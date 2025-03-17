@@ -1,6 +1,6 @@
 console.log("Session Replay Detector script injected!");
 
-// List of known session replay tool script patterns
+// List of known session replay providers
 const sessionReplayTools = [
     { name: "Hotjar", check: () => !!window.hj, script: "hotjar.com" },
     { name: "FullStory", check: () => !!window.FS, script: "fullstory.com" },
@@ -23,10 +23,9 @@ function detectSessionReplayTools() {
     console.log("Checking for session replay tools...");
     const detected = [];
 
-    // Check global variables (window-based detection)
+    // Check for global variables
     sessionReplayTools.forEach(tool => {
         try {
-            console.log(`Checking: ${tool.name}`);
             if (tool.check()) {
                 detected.push(tool.name);
             }
@@ -35,7 +34,17 @@ function detectSessionReplayTools() {
         }
     });
 
-    // Also check network requests for tracking scripts
+    // Check for script tags in the HTML
+    document.querySelectorAll("script").forEach(script => {
+        sessionReplayTools.forEach(tool => {
+            if (script.src.includes(tool.script) && !detected.includes(tool.name)) {
+                detected.push(tool.name);
+                console.log(`Detected ${tool.name} via script tag: ${script.src}`);
+            }
+        });
+    });
+
+    // Observe network requests for session replay scripts
     const observer = new PerformanceObserver((list) => {
         list.getEntries().forEach((entry) => {
             sessionReplayTools.forEach(tool => {
@@ -52,6 +61,12 @@ function detectSessionReplayTools() {
     console.log("Detected tools:", detected);
     return detected;
 }
+
+// Wait for Hotjar or other tools to load dynamically (delayed check)
+setTimeout(() => {
+    console.log("Running delayed check for session replay tools...");
+    detectSessionReplayTools();
+}, 5000); // Waits 5 seconds before re-checking
 
 // Listen for messages from popup.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
